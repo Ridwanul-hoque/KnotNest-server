@@ -1,5 +1,6 @@
 const express = require('express');
 const app = express()
+const jwt = require('jsonwebtoken')
 require('dotenv').config()
 const cors = require('cors')
 const port = process.env.PORT || 5000;
@@ -13,7 +14,7 @@ app.use(express.json())
 
 
 
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.8gt7g.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -33,6 +34,9 @@ async function run() {
 
         const usersCollection = client.db("KnotNestDB").collection("users")
         const bioCollection = client.db("KnotNestDB").collection("Bio")
+        const paymentCollection = client.db("KnotNestDB").collection("payment")
+        const favouriteCollection = client.db("KnotNestDB").collection("favourite")
+       
 
 
 
@@ -78,12 +82,14 @@ async function run() {
 
 
 
+        // users
 
         app.get('/users', async (req, res) => {
             console.log(req.headers)
             const result = await usersCollection.find().toArray();
             res.send(result)
         });
+
 
 
 
@@ -102,6 +108,7 @@ async function run() {
         //     const result = await bioCollection.find().toArray()
         //     res.send(result)
         // })
+        // Bio
         app.get('/Bio', async (req, res) => {
             const { age, biodataType, permanentDivision } = req.query;
             const filter = {};
@@ -126,6 +133,62 @@ async function run() {
                 res.status(500).send({ error: "Failed to fetch bios" });
             }
         });
+
+        app.get('/Bio/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const result = await bioCollection.findOne(query)
+            res.send(result)
+        })
+
+
+
+
+
+        // payment
+        app.get("/isPremium/:email", async (req, res) => {
+            const email = req.params.email;
+            const result = await paymentCollection.findOne({ email, status: "approved" });
+            res.send({ isPremium: !!result }); // Return true if premium
+          });
+          
+        app.post("/payment", async (req, res) => {
+            const paymentData = req.body;
+            const result = await premiumCollection.insertOne(paymentData);
+            res.send(result);
+        });
+
+
+
+        // favourite
+
+
+
+
+
+
+
+
+
+
+
+
+        app.post('/create-payment-intent', async (req, res) => {
+            const { price } = req.body
+            const amount = parseInt(price * 100)
+
+            console.log(amount, "amount inside the intent")
+
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: "usd",
+                payment_method_types: ['card']
+            })
+            res.send({
+                clientSecret: paymentIntent.client_secret
+            })
+        })
+
         // Send a ping to confirm a successful connection
         // await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
