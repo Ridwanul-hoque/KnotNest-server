@@ -30,13 +30,14 @@ const client = new MongoClient(uri, {
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
-        await client.connect();
+        // await client.connect();
 
 
         const usersCollection = client.db("KnotNestDB").collection("users")
         const bioCollection = client.db("KnotNestDB").collection("Bio")
         const paymentCollection = client.db("KnotNestDB").collection("payment")
         const favouriteCollection = client.db("KnotNestDB").collection("favourites");
+        const reviewCollection = client.db("KnotNestDB").collection("reviews")
 
 
 
@@ -584,6 +585,43 @@ async function run() {
         //         res.status(500).send({ error: 'Failed to create payment intent' });
         //     }
         // });
+
+
+
+        // Reviews
+                // Reviews
+                app.get('/reviews', async (req, res) => {
+                    try {
+                        const reviews = await reviewCollection.find().toArray();
+                        res.send(reviews);
+                    } catch (error) {
+                        console.error('Error fetching reviews:', error);
+                        res.status(500).send({ message: 'Failed to fetch reviews' });
+                    }
+                });
+        
+                app.post('/reviews', async (req, res) => {
+                    try {
+                        console.log("Received request body:", req.body); // Debugging log
+                
+                        const { user, comment, rating } = req.body;
+                
+                        if (!user || !comment || rating === undefined) {
+                            return res.status(400).json({ message: 'Missing required fields' });
+                        }
+                
+                        // Ensure `rating` is stored as a number
+                        const newReview = { user, comment, rating: Number(rating), timestamp: new Date() };
+                
+                        const result = await reviewCollection.insertOne(newReview);
+                        res.status(201).json({ message: 'Review added successfully', review: newReview });
+                    } catch (error) {
+                        console.error('Error adding review:', error);
+                        res.status(500).json({ message: 'Server error', error: error.message });
+                    }
+                });
+                
+        
 
         // Handle payment and insert payment information into the DB
 
